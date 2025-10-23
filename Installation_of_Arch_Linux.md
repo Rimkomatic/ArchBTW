@@ -1,130 +1,397 @@
 # Installation of Arch Linux
 
-First of all you need a bootable USB stick.First download the iso file from [arch downloads](https://archlinux.org/download/) and then burn it to a USB stick using something like balenaEtcher.
-
-
-<br>
-<br>
-<br>
+First of all, you need a bootable USB stick. Download the ISO file from [Arch downloads](https://archlinux.org/download/) and burn it to a USB stick using something like **balenaEtcher**.
 
 ## Booting Arch Linux
 
 Boot the USB stick and select the Arch Linux installation medium.
 
-<br>
-<br>
+### Disable Secure Boot
 
-### Disable Secure Boot 
-Arch Linux installation images do not support Secure Boot. You will need to [disable Secure Boot](https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot#Disabling_Secure_Boot) to boot the installation medium. If desired, Secure Boot can be set up after completing the installation.
+Arch Linux installation images do not support Secure Boot. You need to [disable Secure Boot](https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot#Disabling_Secure_Boot) to boot the installation medium. If desired, Secure Boot can be re-enabled and configured after installation.
 
-After booting the installation medium, you will be prompted to select the installation type, 
+After booting the installation medium, select the installation type:
 
-<br>
+* If you used the ISO, select **Arch Linux install medium** and press **Enter**.
+* If you used the Netboot image, choose a geographically close mirror from the Mirror menu, then select **Boot Arch Linux** and press **Enter**.
 
-- If you used the ISO, select Arch Linux install medium and press Enter to enter the installation environment.
-
-- If you used the Netboot image, choose a geographically close mirror from Mirror menu, then select Boot Arch Linux and press Enter. 
-
-<br>
-now selecting the first one will give you this menu 
-
-<br>
-<br>
-
-![Alt text](./installation_images/starting.png)
-
-If you see this, congratulations, you are halfway getting back pain .
-
-<br>
-<br>
-<br>
+If you see the Arch terminal environment, congratulations — you’ve entered the Archway.
 
 ## Setting up the installation environment
 
-Now you will be prompted to set up the installation environment.
-
-<br>
+Now we prepare the environment for installation.
 
 ### Setting up the keyboard layout
 
-
-The default keyboard layout is set to the United States layout. If you want to change the keyboard layout, you can do so by running the following command:
-
-First, run the following command to list the available keyboard layouts:
+The default layout is **US**. To change it:
 
 ```bash
 ls /usr/share/kbd/keymaps/**/*.map.gz
-```
-You can search for the layout you want to use by running the grep command, for example:
-
-```bash
 grep -i "de-latin1" /usr/share/kbd/keymaps/**/*.map.gz
-```
-
-
-Now if you wanna change the layout to latin you can just do this 
-
-```bash
 loadkeys de-latin1
 ```
 
-
-<br>
-<br>
-<br>
+For more information, visit [Keyboard configuration](https://wiki.archlinux.org/title/Keyboard_configuration_in_console).
 
 ### Setting up the fonts
 
-
-<br>
-
-Arch Linux uses the DejaVu Sans font by default. If you want to change the font, you can do so by running the following command , console fonts are located in `/usr/share/kbd/consolefonts/` and can likewise be set with `setfont(8)` omitting the path and file extension. For example, to use one of the largest fonts suitable for HiDPI screens, run:
+Console fonts are in `/usr/share/kbd/consolefonts/`. To set a larger HiDPI font:
 
 ```bash
 setfont ter-132b
 ```
 
-
-<br>
-<br>
+See [Fonts in console](https://wiki.archlinux.org/title/Linux_console#Fonts) for additional font options.
 
 ### Updating the system clock
-In the live environment [systemd-timesyncd](https://wiki.archlinux.org/title/Systemd-timesyncd) is enabled by default and time will be synced automatically once a connection to the internet is established, we will set up the internet connection soon. 
+
+The live environment enables `systemd-timesyncd` by default. To verify time sync:
 
 ```bash
 timedatectl
 ```
 
+Refer to [systemd-timesyncd](https://wiki.archlinux.org/title/Systemd-timesyncd) for more details.
 
+## Connecting to the Internet
 
-<br>
-<br>
-
-
-## Partitioning the disk
-
-
-<br>
-<br>
-
-### Check if you have a UEFI system
-
-Now in this step you have to check what type of system you are in, some steps are different for UEFI and non-UEFI systems.You should verify if you have UEFI enabled system or not. Use this command:
-
+For Ethernet, connection is automatic. To verify:
 
 ```bash
-ls /usr/firmware/efi/efivars
+ping archlinux.org
 ```
 
-If this directory exists, you have a UEFI enabled system. You should follow the steps for UEFI system. The steps that differ are clearly mentioned.
+For Wi-Fi:
 
-<br>
-<br>
+```bash
+iwctl
+```
 
+Then in the interactive prompt:
 
-### EFI Partition (Only for UEFI systems)
+```bash
+device list
+station wlan0 scan
+station wlan0 get-networks
+station wlan0 connect "SSID"
+exit
+```
 
-If you have a **UEFI system**, you must create an **EFI partition at the beginning of your disk**. Otherwise, skip this step.
+Check with:
 
+```bash
+ping archlinux.org
+```
 
+More info at [Wireless setup](https://wiki.archlinux.org/title/Iwd).
 
+## Partitioning the Disk
+
+List available disks:
+
+```bash
+fdisk -l
+```
+
+Select your target disk:
+
+```bash
+fdisk /dev/sda
+```
+
+### Check for UEFI system
+
+```bash
+ls /sys/firmware/efi/efivars
+```
+
+If the directory exists, you have a UEFI system.
+
+Read more: [UEFI](https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface)
+
+### EFI Partition (UEFI only)
+
+Create a 512MB EFI partition:
+
+```bash
+n   # new partition
+1   # partition number
++512M
+```
+
+Change its type:
+
+```bash
+t
+L   # list types
+1   # EFI System
+```
+
+### Create Root Partition
+
+Create root partition for the rest of the disk:
+
+```bash
+n   # new partition
+2   # partition number
+<enter>
+<enter>
+```
+
+Then write changes:
+
+```bash
+w
+```
+
+For advanced partitioning, refer to [Partitioning](https://wiki.archlinux.org/title/Partitioning).
+
+## Formatting the Partitions
+
+### UEFI Systems
+
+```bash
+mkfs.fat -F32 /dev/sda1
+mkfs.ext4 /dev/sda2
+```
+
+### BIOS Systems
+
+```bash
+mkfs.ext4 /dev/sda1
+```
+
+## Mount the File Systems
+
+```bash
+mount /dev/sda2 /mnt
+mkdir /mnt/boot
+mount /dev/sda1 /mnt/boot
+```
+
+## Installing the Base System
+
+```bash
+pacstrap -K /mnt base linux linux-firmware
+```
+
+Optionally, for NVIDIA GPUs:
+
+```bash
+pacstrap /mnt nvidia nvidia-utils cuda
+```
+
+For AMD GPUs:
+
+```bash
+pacstrap /mnt mesa xf86-video-amdgpu vulkan-radeon
+```
+
+For Intel GPUs:
+
+```bash
+pacstrap /mnt mesa vulkan-intel intel-ucode
+```
+
+GPU drivers info: [NVIDIA](https://wiki.archlinux.org/title/NVIDIA), [AMD](https://wiki.archlinux.org/title/AMDGPU), [Intel](https://wiki.archlinux.org/title/Intel_graphics)
+
+## Generate Fstab
+
+```bash
+genfstab -U /mnt >> /mnt/etc/fstab
+cat /mnt/etc/fstab
+```
+
+## Chroot into the System
+
+```bash
+arch-chroot /mnt
+```
+
+## Setting Time Zone
+
+```bash
+ln -sf /usr/share/zoneinfo/Region/City /etc/localtime
+hwclock --systohc
+```
+
+## Localization
+
+Edit locale file:
+
+```bash
+nano /etc/locale.gen
+```
+
+Uncomment your locale (e.g., `en_US.UTF-8 UTF-8`), then:
+
+```bash
+locale-gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
+```
+
+Refer to [Locale configuration](https://wiki.archlinux.org/title/Locale).
+
+## Network Configuration
+
+```bash
+echo "archlinux" > /etc/hostname
+```
+
+Add entries to `/etc/hosts`:
+
+```bash
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   archlinux.localdomain archlinux
+```
+
+## Set Root Password
+
+```bash
+passwd
+```
+
+## Install Essential Packages
+
+```bash
+pacman -S networkmanager grub efibootmgr vim base-devel linux-headers git
+```
+
+Enable NetworkManager:
+
+```bash
+systemctl enable NetworkManager
+```
+
+## GRUB Bootloader Installation
+
+For UEFI systems:
+
+```bash
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+grub-mkconfig -o /boot/grub/grub.cfg
+```
+
+For BIOS systems:
+
+```bash
+grub-install --target=i386-pc /dev/sda
+grub-mkconfig -o /boot/grub/grub.cfg
+```
+
+More at [GRUB](https://wiki.archlinux.org/title/GRUB).
+
+## Finishing Installation
+
+Exit the chroot and unmount:
+
+```bash
+exit
+umount -R /mnt
+reboot
+```
+
+Remove the installation media when prompted. Welcome to Arch Linux!
+
+---
+
+## Post-Installation: Desktop Environment or Window Manager
+
+You can now install your preferred desktop environment (DE) or window manager (WM).
+
+### KDE Plasma
+
+```bash
+sudo pacman -S plasma kde-applications sddm
+sudo systemctl enable sddm
+```
+
+[Arch Wiki: KDE](https://wiki.archlinux.org/title/KDE)
+
+### GNOME
+
+```bash
+sudo pacman -S gnome gnome-extra gdm
+sudo systemctl enable gdm
+```
+
+[Arch Wiki: GNOME](https://wiki.archlinux.org/title/GNOME)
+
+### Hyprland (Wayland-based compositor)
+
+```bash
+sudo pacman -S hyprland waybar wofi xdg-desktop-portal-hyprland
+```
+
+[Hyprland Wiki](https://wiki.archlinux.org/title/Hyprland)
+
+### i3 Window Manager
+
+```bash
+sudo pacman -S i3 dmenu i3status i3lock nitrogen picom
+```
+
+[i3 Wiki](https://wiki.archlinux.org/title/I3)
+
+You can switch between them using a display manager.
+
+## Display Managers
+
+### SDDM (for KDE or others)
+
+```bash
+sudo pacman -S sddm
+sudo systemctl enable sddm
+```
+
+### GDM (for GNOME)
+
+```bash
+sudo pacman -S gdm
+sudo systemctl enable gdm
+```
+
+### Ly (TUI display manager)
+
+```bash
+git clone https://aur.archlinux.org/ly.git
+cd ly
+makepkg -si
+sudo systemctl enable ly.service
+```
+
+See [Display manager](https://wiki.archlinux.org/title/Display_manager) for alternatives.
+
+## Audio Setup
+
+For PipeWire:
+
+```bash
+sudo pacman -S pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
+```
+
+[PipeWire Wiki](https://wiki.archlinux.org/title/PipeWire)
+
+## GPU and CUDA Verification
+
+For NVIDIA:
+
+```bash
+nvidia-smi
+```
+
+For OpenCL:
+
+```bash
+clinfo | grep 'Device'
+```
+
+---
+
+At this stage, you have a fully functional, GPU-accelerated, customizable Arch Linux setup with a desktop environment or window manager of your choice.
+
+Further reading:
+
+* [General Recommendations](https://wiki.archlinux.org/title/General_recommendations)
+* [Arch User Repository (AUR)](https://wiki.archlinux.org/title/Arch_User_Repository)
