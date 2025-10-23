@@ -10,20 +10,100 @@ Boot the USB stick and select the Arch Linux installation medium.
 
 Arch Linux installation images do not support Secure Boot. You need to [disable Secure Boot](https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot#Disabling_Secure_Boot) to boot the installation medium. If desired, Secure Boot can be re-enabled and configured after installation.
 
-After booting the installation medium, select the installation type:
+After booting, select the installation type:
 
-* If you used the ISO, select **Arch Linux install medium** and press **Enter**.
-* If you used the Netboot image, choose a geographically close mirror from the Mirror menu, then select **Boot Arch Linux** and press **Enter**.
+* **Arch Linux install medium** if using the ISO.
+* **Boot Arch Linux** after choosing a mirror if using the Netboot image.
 
-If you see the Arch terminal environment, congratulations — you’ve entered the Archway.
+If you see the Arch terminal prompt, congratulations — you’ve entered the Archway.
 
-## Setting up the installation environment
+---
 
-Now we prepare the environment for installation.
+## Disk Partitioning Overview
 
-### Setting up the keyboard layout
+Before diving in, here’s how the `fdisk` tool works. It’s a command-line utility for managing disk partitions. When you start it with `fdisk /dev/sda`, you’ll enter an interactive session. You can press `m` at any time to display a list of all available commands. A simple step-by-step flow to create partitions is:
 
-The default layout is **US**. To change it:
+1. Type `n` to create a new partition.
+2. Enter the partition number (start with 1 for the first partition).
+3. Press Enter to accept the default starting sector.
+4. Type `+<size>` (for example `+512M` or `+16G`) to define the partition size.
+5. Repeat `n` for additional partitions.
+6. Use `t` to change the partition type (for swap, EFI, etc.).
+7. Type `p` to print and review the table.
+8. Finally, type `w` to write changes and exit.
+
+Use `q` instead of `w` if you want to quit without saving changes. Common commands include:
+
+* `n`: Create a new partition
+* `d`: Delete a partition
+* `p`: Print current partition table
+* `t`: Change a partition type
+* `w`: Write changes to disk
+* `q`: Quit without saving
+
+You can view disks with:
+
+```bash
+fdisk -l
+```
+
+Then open your target disk:
+
+```bash
+fdisk /dev/sda
+```
+
+If you’re unsure about partition schemes, read [Partitioning](https://wiki.archlinux.org/title/Partitioning) on the Arch Wiki.
+
+---
+
+## Connecting to the Internet
+
+Internet access is crucial for installation.
+
+### Ethernet
+
+Usually automatic. Test it:
+
+```bash
+ping archlinux.org
+```
+
+### Wi-Fi (using `iwctl`)
+
+If using Wi-Fi, launch the interactive prompt:
+
+```bash
+iwctl
+```
+
+Inside `iwctl`:
+
+```bash
+device list                # lists wireless devices
+station wlan0 scan         # scans for nearby networks
+station wlan0 get-networks # shows available SSIDs
+station wlan0 connect "SSID"  # connect to your Wi-Fi
+exit
+```
+
+Test your connection again:
+
+```bash
+ping archlinux.org
+```
+
+More information: [Iwd Wi-Fi setup](https://wiki.archlinux.org/title/Iwd#iwctl_interactive_use)
+
+Later, once installed, we’ll set up **NetworkManager** for easier network handling.
+
+---
+
+## Setting up the Installation Environment
+
+### Keyboard Layout
+
+Default is US. To list and change layouts:
 
 ```bash
 ls /usr/share/kbd/keymaps/**/*.map.gz
@@ -31,421 +111,306 @@ grep -i "de-latin1" /usr/share/kbd/keymaps/**/*.map.gz
 loadkeys de-latin1
 ```
 
-For more information, visit [Keyboard configuration](https://wiki.archlinux.org/title/Keyboard_configuration_in_console).
+### Font
 
-### Setting up the fonts
-
-Console fonts are in `/usr/share/kbd/consolefonts/`. To set a larger HiDPI font:
+For larger fonts on HiDPI screens:
 
 ```bash
 setfont ter-132b
 ```
 
-See [Fonts in console](https://wiki.archlinux.org/title/Linux_console#Fonts) for additional font options.
+### System Clock
 
-### Updating the system clock
-
-The live environment enables `systemd-timesyncd` by default. To verify time sync:
+`systemd-timesyncd` syncs time automatically once connected. Check status:
 
 ```bash
 timedatectl
 ```
 
-Refer to [systemd-timesyncd](https://wiki.archlinux.org/title/Systemd-timesyncd) for more details.
+---
 
-## Connecting to the Internet
+## Partitioning for Installation
 
-For Ethernet, connection is automatic. To verify:
-
-```bash
-ping archlinux.org
-```
-
-For Wi-Fi:
-
-```bash
-iwctl
-```
-
-Then in the interactive prompt:
-
-```bash
-device list
-station wlan0 scan
-station wlan0 get-networks
-station wlan0 connect "SSID"
-exit
-```
-
-Check with:
-
-```bash
-ping archlinux.org
-```
-
-More info at [Wireless setup](https://wiki.archlinux.org/title/Iwd).
-
-## Partitioning the Disk
-
-List available disks:
-
-```bash
-fdisk -l
-```
-
-Select your target disk:
-
-```bash
-fdisk /dev/sda
-```
-
-### Check for UEFI system
+### Check System Type (UEFI or BIOS)
 
 ```bash
 ls /sys/firmware/efi/efivars
 ```
 
-If the directory exists, you have a UEFI system.
+If it exists, you’re on a **UEFI** system. Otherwise, you’re on **BIOS/MBR**.
 
-Read more: [UEFI](https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface)
+### UEFI Partitioning
 
-### EFI Partition (UEFI only)
-
-Create a 512MB EFI partition for systems using UEFI:
+Create a 512MB EFI partition:
 
 ```bash
-n   # new partition
-1   # partition number
+n
+1
 +512M
 ```
 
-Change its type to EFI System:
+Change type:
 
 ```bash
 t
-L   # list types
-1   # EFI System
+1
 ```
 
-You may also create a **swap partition** if you want to enable swap space on UEFI systems. Swap acts as an overflow for RAM and supports hibernation. The recommended size depends on your system:
+Optionally, create a swap partition (recommended if you plan to hibernate):
 
-* Equal to your RAM (if you plan to use hibernation)
-* Half of your RAM for systems with more than 16GB of RAM
-
-Example for a 16GB swap partition:
+* Equal to RAM size (for hibernation)
+* Half your RAM for >16GB systems
 
 ```bash
-n   # new partition
-2   # partition number
+n
+2
 +16G
-```
-
-Then set its type to Linux swap:
-
-```bash
 t
-L   # list types
-19  # Linux swap
+19
 ```
 
-Finally, continue with creating the root partition as usual. See [Swap on Arch Wiki](https://wiki.archlinux.org/title/Swap) for more details.
-
-### BIOS/MBR Systems (Non-UEFI)
-
-If your system does not support UEFI and uses BIOS with MBR partitioning, you can simply create a bootable partition and optionally a **swap partition** to act as virtual memory. The swap partition is used when your system runs out of physical RAM and can help with hibernation and heavy workloads. Typically, a swap space equal to your RAM size (up to 8GB) is recommended, or at least half your RAM for systems with 16GB or more. See [Swap on Arch Wiki](https://wiki.archlinux.org/title/Swap) for more guidance.
-
-Create a small BIOS boot partition of about 1MB before other partitions (used by GRUB for BIOS installs):
+Finally, create root partition:
 
 ```bash
-n   # new partition
-1   # partition number
-+1M
+n
+3
+<enter>
+<enter>
 ```
 
-Change its type to BIOS boot:
+### BIOS/MBR Partitioning
+
+For BIOS systems, you'll be using the traditional Master Boot Record (MBR) scheme instead of GPT. This means your disk will store its partition table differently, but the concept of root and swap partitions remains the same.
+
+When you enter `fdisk /dev/sda`, you'll start the interactive partitioning mode. Each time you press `n`, you're creating a new partition. The tool will ask for a partition number — starting with **1** for the first partition. That’s why we enter `1` first: it becomes `/dev/sda1`.
+
+Next, when you type `+16G`, you’re telling `fdisk` to make this partition 16 gigabytes in size. You can adjust this depending on your available disk space — it can be larger or smaller. This partition will usually serve as **swap** if you set its type to Linux swap later.
+
+Then, you’ll create another partition (by typing `n` again and choosing the next number) to use the remaining space for the **root filesystem**, which holds all your system files.
+
+You don’t need an EFI partition here because BIOS systems don’t use it. The BIOS simply looks for the bootloader code in the first sector of your disk (the MBR), which is where GRUB will be installed.
+
+If you’re unsure about how much swap you need, the general rule is:
+
+* Equal to your RAM size if you want hibernation.
+* Half of your RAM if you have more than 16GB.
+
+Refer to [Swap on Arch Wiki](https://wiki.archlinux.org/title/Swap) for guidance on sizing and setup.
 
 ```bash
+n
+1
++16G
 t
-L   # list types
-4   # BIOS boot partition
-```
-
-Then create the root partition occupying the rest of the space:
-
-```bash
-n   # new partition
-2   # partition number
+19
+n
+2
 <enter>
 <enter>
 ```
 
-The small buffer partition ensures the bootloader has a proper area to store boot code on MBR setups. You can read more at [GRUB BIOS installation](https://wiki.archlinux.org/title/GRUB#BIOS_systems) and [Partitioning for BIOS systems](https://wiki.archlinux.org/title/Partitioning#BIOS_boot_partition).
+---
 
-### Create Root Partition
+## Formatting Partitions
 
-Create root partition for the rest of the disk:
-
-```bash
-n   # new partition
-2   # partition number
-<enter>
-<enter>
-```
-
-Then write changes:
-
-```bash
-w
-```
-
-For advanced partitioning, refer to [Partitioning](https://wiki.archlinux.org/title/Partitioning).
-
-## Formatting the Partitions
-
-### UEFI Systems
+For UEFI:
 
 ```bash
 mkfs.fat -F32 /dev/sda1
+mkswap /dev/sda2
+mkfs.ext4 /dev/sda3
+```
+
+For BIOS:
+
+```bash
+mkswap /dev/sda1
 mkfs.ext4 /dev/sda2
 ```
 
-### BIOS Systems
+Enable swap:
 
 ```bash
-mkfs.ext4 /dev/sda1
+swapon /dev/sda2
 ```
 
-## Mount the File Systems
+---
+
+## Mount Filesystems
 
 ```bash
-mount /dev/sda2 /mnt
+mount /dev/sda3 /mnt
 mkdir /mnt/boot
 mount /dev/sda1 /mnt/boot
 ```
 
-## Installing the Base System
+---
+
+## Base Installation
 
 ```bash
 pacstrap -K /mnt base linux linux-firmware
 ```
 
-Optionally, for NVIDIA GPUs:
+GPU support:
 
 ```bash
-pacstrap /mnt nvidia nvidia-utils cuda
+# NVIDIA
+yay -S nvidia nvidia-utils cuda
+# AMD
+pacman -S mesa xf86-video-amdgpu vulkan-radeon
+# Intel
+pacman -S mesa vulkan-intel intel-ucode
 ```
 
-For AMD GPUs:
-
-```bash
-pacstrap /mnt mesa xf86-video-amdgpu vulkan-radeon
-```
-
-For Intel GPUs:
-
-```bash
-pacstrap /mnt mesa vulkan-intel intel-ucode
-```
-
-GPU drivers info: [NVIDIA](https://wiki.archlinux.org/title/NVIDIA), [AMD](https://wiki.archlinux.org/title/AMDGPU), [Intel](https://wiki.archlinux.org/title/Intel_graphics)
+---
 
 ## Generate Fstab
 
 ```bash
 genfstab -U /mnt >> /mnt/etc/fstab
-cat /mnt/etc/fstab
 ```
 
-## Chroot into the System
+---
+
+## Chroot
 
 ```bash
 arch-chroot /mnt
 ```
 
-## Setting Time Zone
+---
+
+## Region, Time, and Locale
+
+Set your time zone:
 
 ```bash
 ln -sf /usr/share/zoneinfo/Region/City /etc/localtime
 hwclock --systohc
 ```
 
-## Localization
-
-Edit locale file:
+Localization:
 
 ```bash
 nano /etc/locale.gen
-```
-
-Uncomment your locale (e.g., `en_US.UTF-8 UTF-8`), then:
-
-```bash
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 ```
 
-Refer to [Locale configuration](https://wiki.archlinux.org/title/Locale).
+---
 
 ## Network Configuration
 
+Set hostname and hosts:
+
 ```bash
 echo "archlinux" > /etc/hostname
-```
-
-Add entries to `/etc/hosts`:
-
-```bash
+cat <<EOF > /etc/hosts
 127.0.0.1   localhost
 ::1         localhost
 127.0.1.1   archlinux.localdomain archlinux
-```
-
-## Set Root Password
-
-```bash
-passwd
-```
-
-## Install Essential Packages
-
-```bash
-pacman -S networkmanager grub efibootmgr vim base-devel linux-headers git
+EOF
 ```
 
 Enable NetworkManager:
 
 ```bash
+pacman -S networkmanager
 systemctl enable NetworkManager
 ```
 
-## GRUB Bootloader Installation
+---
 
-For UEFI systems:
+## Audio Setup (PipeWire or PulseAudio)
+
+Modern Arch uses PipeWire by default:
 
 ```bash
+pacman -S pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
+```
+
+If you prefer PulseAudio:
+
+```bash
+pacman -S pulseaudio pulseaudio-alsa
+```
+
+---
+
+## Display Server and Seat Management
+
+For GUI sessions, you’ll need a **seat management daemon** like `seatd`, used by lightweight compositors (e.g., Sway, Hyprland).
+
+```bash
+pacman -S seatd
+systemctl enable seatd.service
+```
+
+`seatd` handles device access (input, output, etc.) without a full display manager. More: [Seat management](https://wiki.archlinux.org/title/Seat_management)
+
+---
+
+## Bootloader
+
+For UEFI:
+
+```bash
+pacman -S grub efibootmgr
 grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
-For BIOS systems:
+For BIOS:
 
 ```bash
+pacman -S grub
 grub-install --target=i386-pc /dev/sda
 grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
-More at [GRUB](https://wiki.archlinux.org/title/GRUB).
-
-## Finishing Installation
-
-Exit the chroot and unmount:
-
-```bash
-exit
-umount -R /mnt
-reboot
-```
-
-Remove the installation media when prompted. Welcome to Arch Linux!
-
 ---
 
-## Post-Installation: Desktop Environment or Window Manager
+## Post-Installation
 
-You can now install your preferred desktop environment (DE) or window manager (WM).
-
-### KDE Plasma
+Once inside your system, you can install desktop environments like KDE, GNOME, or window managers such as Hyprland or i3. You can install them with pacman as follows:
 
 ```bash
-sudo pacman -S plasma kde-applications sddm
-sudo systemctl enable sddm
+# KDE Plasma
+yay -S plasma kde-applications sddm
+systemctl enable sddm
+
+# GNOME
+pacman -S gnome gnome-extra gdm
+systemctl enable gdm
+
+# Hyprland (Wayland)
+pacman -S hyprland waybar wofi xdg-desktop-portal-hyprland
+
+# i3 Window Manager
+pacman -S i3 dmenu i3status i3lock nitrogen picom
 ```
 
-[Arch Wiki: KDE](https://wiki.archlinux.org/title/KDE)
+Refer to their respective [Arch Wiki pages](https://wiki.archlinux.org/title/Desktop_environment) for more detailed instructions and customization tips.
 
-### GNOME
-
-```bash
-sudo pacman -S gnome gnome-extra gdm
-sudo systemctl enable gdm
-```
-
-[Arch Wiki: GNOME](https://wiki.archlinux.org/title/GNOME)
-
-### Hyprland (Wayland-based compositor)
+Also, consider enabling services like **SDDM**, **GDM**, or **Ly** for easy session management. You can install them as follows:
 
 ```bash
-sudo pacman -S hyprland waybar wofi xdg-desktop-portal-hyprland
-```
+# SDDM (KDE and general use)
+pacman -S sddm
+systemctl enable sddm
 
-[Hyprland Wiki](https://wiki.archlinux.org/title/Hyprland)
+# GDM (GNOME)
+pacman -S gdm
+systemctl enable gdm
 
-### i3 Window Manager
-
-```bash
-sudo pacman -S i3 dmenu i3status i3lock nitrogen picom
-```
-
-[i3 Wiki](https://wiki.archlinux.org/title/I3)
-
-You can switch between them using a display manager.
-
-## Display Managers
-
-### SDDM (for KDE or others)
-
-```bash
-sudo pacman -S sddm
-sudo systemctl enable sddm
-```
-
-### GDM (for GNOME)
-
-```bash
-sudo pacman -S gdm
-sudo systemctl enable gdm
-```
-
-### Ly (TUI display manager)
-
-```bash
+# Ly (lightweight TUI manager)
 git clone https://aur.archlinux.org/ly.git
 cd ly
 makepkg -si
-sudo systemctl enable ly.service
+systemctl enable ly.service
 ```
 
-See [Display manager](https://wiki.archlinux.org/title/Display_manager) for alternatives.
+These display managers let you easily log in, switch between desktop environments, and manage sessions graphically. See [Display manager](https://wiki.archlinux.org/title/Display_manager) and [General recommendations](https://wiki.archlinux.org/title/General_recommendations) for further details and optional configurations.
 
-## Audio Setup
-
-For PipeWire:
-
-```bash
-sudo pacman -S pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
-```
-
-[PipeWire Wiki](https://wiki.archlinux.org/title/PipeWire)
-
-## GPU and CUDA Verification
-
-For NVIDIA:
-
-```bash
-nvidia-smi
-```
-
-For OpenCL:
-
-```bash
-clinfo | grep 'Device'
-```
-
----
-
-At this stage, you have a fully functional, GPU-accelerated, customizable Arch Linux setup with a desktop environment or window manager of your choice.
-
-Further reading:
-
-* [General Recommendations](https://wiki.archlinux.org/title/General_recommendations)
-* [Arch User Repository (AUR)](https://wiki.archlinux.org/title/Arch_User_Repository)
+You now have a working, network-ready, audio-configured Arch Linux base system.
