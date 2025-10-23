@@ -111,7 +111,7 @@ Read more: [UEFI](https://wiki.archlinux.org/title/Unified_Extensible_Firmware_I
 
 ### EFI Partition (UEFI only)
 
-Create a 512MB EFI partition:
+Create a 512MB EFI partition for systems using UEFI:
 
 ```bash
 n   # new partition
@@ -119,13 +119,67 @@ n   # new partition
 +512M
 ```
 
-Change its type:
+Change its type to EFI System:
 
 ```bash
 t
 L   # list types
 1   # EFI System
 ```
+
+You may also create a **swap partition** if you want to enable swap space on UEFI systems. Swap acts as an overflow for RAM and supports hibernation. The recommended size depends on your system:
+
+* Equal to your RAM (if you plan to use hibernation)
+* Half of your RAM for systems with more than 16GB of RAM
+
+Example for a 16GB swap partition:
+
+```bash
+n   # new partition
+2   # partition number
++16G
+```
+
+Then set its type to Linux swap:
+
+```bash
+t
+L   # list types
+19  # Linux swap
+```
+
+Finally, continue with creating the root partition as usual. See [Swap on Arch Wiki](https://wiki.archlinux.org/title/Swap) for more details.
+
+### BIOS/MBR Systems (Non-UEFI)
+
+If your system does not support UEFI and uses BIOS with MBR partitioning, you can simply create a bootable partition and optionally a **swap partition** to act as virtual memory. The swap partition is used when your system runs out of physical RAM and can help with hibernation and heavy workloads. Typically, a swap space equal to your RAM size (up to 8GB) is recommended, or at least half your RAM for systems with 16GB or more. See [Swap on Arch Wiki](https://wiki.archlinux.org/title/Swap) for more guidance.
+
+Create a small BIOS boot partition of about 1MB before other partitions (used by GRUB for BIOS installs):
+
+```bash
+n   # new partition
+1   # partition number
++1M
+```
+
+Change its type to BIOS boot:
+
+```bash
+t
+L   # list types
+4   # BIOS boot partition
+```
+
+Then create the root partition occupying the rest of the space:
+
+```bash
+n   # new partition
+2   # partition number
+<enter>
+<enter>
+```
+
+The small buffer partition ensures the bootloader has a proper area to store boot code on MBR setups. You can read more at [GRUB BIOS installation](https://wiki.archlinux.org/title/GRUB#BIOS_systems) and [Partitioning for BIOS systems](https://wiki.archlinux.org/title/Partitioning#BIOS_boot_partition).
 
 ### Create Root Partition
 
