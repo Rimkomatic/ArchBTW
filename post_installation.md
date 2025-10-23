@@ -84,7 +84,7 @@ sudo ufw enable
 ## 5. Multimedia & Creative Tools
 
 ```bash
-yay -S vlc pavucontrol spotify pinta ffmpegthumbnailer
+yay -S vlc-git pavucontrol spotify pinta ffmpegthumbnailer
 ```
 
 **Purpose:** Video, audio, and media tools.
@@ -104,6 +104,10 @@ xdg-mime default vlc.desktop video/*
 ---
 
 ## 6. File Management & GUI Tools
+
+```bash
+yay -S dolphin dolphin-plugins nautilus nautilus-open-any-terminal zathura zathura-pdf-mupdf
+```
 
 ```bash
 yay -S dolphin dolphin-plugins nautilus nautilus-open-any-terminal
