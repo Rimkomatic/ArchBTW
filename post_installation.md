@@ -251,4 +251,39 @@ sudo reboot
 
 ---
 
-You now have a fully functional Arch Linux environment — developer-ready, multimedia-friendly, and visually refined. Read the Arch Wiki often; it’s your best reference for deeper customization.
+You now have a fully functional Arch Linux environment — developer-ready, multimedia-friendly, and visually refined. Before finishing, you can enhance your setup by configuring Zsh as your default shell and setting up GitHub access.
+
+### Set Zsh as Default Shell
+
+```bash
+yay -S zsh zsh-completions zsh-autosuggestions zsh-syntax-highlighting
+chsh -s /bin/zsh
+```
+
+Restart your terminal to use Zsh.
+
+### Set Up SSH Key for GitHub
+
+```bash
+ssh-keygen -t ed25519 -C "your_email@example.com"
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
+cat ~/.ssh/id_ed25519.pub
+```
+
+Copy the printed key and add it to your GitHub SSH settings under **Settings → SSH and GPG keys**.
+
+### Configure Git Identity
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your_email@example.com"
+```
+
+You can verify configuration with:
+
+```bash
+git config --list
+```
+
+Read the Arch Wiki often; it’s your best reference for deeper customization.
