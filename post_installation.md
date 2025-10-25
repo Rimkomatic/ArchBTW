@@ -64,7 +64,7 @@ yay -S git lazygit rust nodejs npm python-pip cmake nasm
 ## 4. System Utilities
 
 ```bash
-yay -S bat btop eza fastfetch htop lsd 7zip wget ufw power-profiles-daemon
+yay -S bat btop eza fastfetch htop lsd 7zip wget ufw power-profiles-daemon usbutils
 ```
 
 **Purpose:** Everyday utilities.
